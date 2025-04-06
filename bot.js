@@ -1,12 +1,15 @@
 const express = require("express");
 const puppeteer = require("puppeteer");
+require('./openbot_interrogatorio'); // Este import debe ejecutar algo útil, si no, elimínalo
+
 const app = express();
 app.use(express.json());
 
 app.post("/pregunta", async (req, res) => {
-  const { texto } = req.body;
-  if (!texto) {
-    return res.status(400).json({ error: "Falta el campo 'texto'" });
+  const { pregunta } = req.body;
+
+  if (!pregunta) {
+    return res.status(400).json({ error: "Falta el campo 'pregunta'" });
   }
 
   try {
@@ -19,7 +22,7 @@ app.post("/pregunta", async (req, res) => {
     await page.goto("https://openevidence.ai", { waitUntil: "networkidle2" });
 
     await page.waitForSelector("textarea");
-    await page.type("textarea", texto);
+    await page.type("textarea", pregunta);
     await page.keyboard.press("Enter");
 
     await page.waitForSelector(".markdown", { timeout: 30000 });
@@ -35,7 +38,7 @@ app.post("/pregunta", async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 4000;   
+const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Ya jala el OpenBot en el puerto ${PORT}`);
 });
