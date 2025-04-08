@@ -1,10 +1,13 @@
 const express = require("express");
 const puppeteer = require("puppeteer");
-require('./openbot_interrogatorio'); // Este import debe ejecutar algo útil, si no, elimínalo
 
 const app = express();
 app.use(express.json());
 
+// 🧠 Almacenamiento en memoria para preguntas personalizadas
+const preguntasPorPaciente = {};
+
+// 🔌 Endpoint para rascarle a OpenEvidence
 app.post("/pregunta", async (req, res) => {
   const { pregunta } = req.body;
 
@@ -26,7 +29,6 @@ app.post("/pregunta", async (req, res) => {
     await page.keyboard.press("Enter");
 
     await page.waitForSelector(".markdown", { timeout: 30000 });
-
     const respuesta = await page.$eval(".markdown", el => el.innerText);
 
     await browser.close();
@@ -38,7 +40,31 @@ app.post("/pregunta", async (req, res) => {
   }
 });
 
+// ✅ Guardar preguntas personalizadas por ID
+app.post("/guardar-preguntas", (req, res) => {
+  const { idPaciente, preguntas } = req.body;
+
+  if (!idPaciente || !preguntas) {
+    return res.status(400).json({ error: "Faltan datos" });
+  }
+
+  preguntasPorPaciente[idPaciente] = preguntas;
+  res.json({ status: "OK", mensaje: "Preguntas guardadas correctamente" });
+});
+
+// ✅ Consultar preguntas por ID (para formulario HTML)
+app.get("/preguntas/:id", (req, res) => {
+  const preguntas = preguntasPorPaciente[req.params.id];
+
+  if (!preguntas) {
+    return res.status(404).json({ error: "No se encontraron preguntas para este ID" });
+  }
+
+  res.json({ preguntas });
+});
+
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
-  console.log(`Ya jala el OpenBot en el puerto ${PORT}`);
+  console.log(`Servidor Taylenio activo en el puerto ${PORT}`);
 });
+
