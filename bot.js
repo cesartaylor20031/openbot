@@ -1,8 +1,10 @@
 const express = require("express");
+const cors = require("cors"); // 💥 NUEVO
 const puppeteer = require("puppeteer");
 const axios = require("axios");
 
 const app = express();
+app.use(cors()); // 💥 ¡ACTIVANDO EL PERMISO GLOBAL!
 app.use(express.json());
 
 const preguntasPorPaciente = {};
