@@ -41,15 +41,18 @@ app.post("/pregunta", async (req, res) => {
   }
 });
 
-// ✅ Guardar preguntas personalizadas por ID
+// ✅ Guardar preguntas personalizadas por ID (CORREGIDO FINAL)
 app.post("/guardar-preguntas", (req, res) => {
-  const { idPaciente, preguntas } = req.body;
+  let { idPaciente, preguntas } = req.body;
 
   if (!idPaciente || !preguntas) {
     return res.status(400).json({ error: "Faltan datos" });
   }
 
-  console.log("🔥 LO QUE RECIBO EN GUARDAR-PREGUNTAS:", req.body);  // <--- ESTA ES LA LÍNEA NUEVA (Log)
+  idPaciente = idPaciente.trim();
+  preguntas = preguntas.split(',').map(p => p.trim());
+
+  console.log("🔥 LO QUE RECIBO EN GUARDAR-PREGUNTAS (CORREGIDO):", { idPaciente, preguntas });
 
   preguntasPorPaciente[idPaciente] = preguntas;
   res.json({ status: "OK", mensaje: "Preguntas guardadas correctamente" });
@@ -73,7 +76,7 @@ app.post("/guardar-respuestas", async (req, res) => {
     respuestas
   };
 
-  console.log("🚀 LO QUE SE ENVÍA AL WEBHOOK:", combinado);  // <--- ESTA ES LA LÍNEA NUEVA (Log)
+  console.log("🚀 LO QUE SE ENVÍA AL WEBHOOK:", combinado);
 
   try {
     await axios.post("https://n8n-railway-production-adfa.up.railway.app/webhook/generar-pregunta-open-evidence", combinado);
