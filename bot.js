@@ -1,10 +1,10 @@
 const express = require("express");
-const cors = require("cors"); // 💥 NUEVO
+const cors = require("cors");
 const puppeteer = require("puppeteer");
 const axios = require("axios");
 
 const app = express();
-app.use(cors()); // 💥 ¡ACTIVANDO EL PERMISO GLOBAL!
+app.use(cors());
 app.use(express.json());
 
 const preguntasPorPaciente = {};
@@ -43,7 +43,7 @@ app.post("/pregunta", async (req, res) => {
   }
 });
 
-// ✅ Guardar preguntas personalizadas por ID (CORREGIDO FINAL)
+// ✅ Guardar preguntas personalizadas por ID (filtrado)
 app.post("/guardar-preguntas", (req, res) => {
   let { idPaciente, preguntas } = req.body;
 
@@ -52,9 +52,12 @@ app.post("/guardar-preguntas", (req, res) => {
   }
 
   idPaciente = idPaciente.trim();
-  preguntas = preguntas.split(',').map(p => p.trim());
+  preguntas = preguntas
+    .split(',')
+    .map(p => p.trim())
+    .filter(p => p.endsWith('?'));
 
-  console.log("🔥 LO QUE RECIBO EN GUARDAR-PREGUNTAS (CORREGIDO):", { idPaciente, preguntas });
+  console.log("🔥 LO QUE RECIBO EN GUARDAR-PREGUNTAS (FILTRADO):", { idPaciente, preguntas });
 
   preguntasPorPaciente[idPaciente] = preguntas;
   res.json({ status: "OK", mensaje: "Preguntas guardadas correctamente" });
