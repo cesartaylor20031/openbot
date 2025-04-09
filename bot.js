@@ -1,13 +1,15 @@
+
 const express = require("express");
 const puppeteer = require("puppeteer");
+const axios = require("axios");
 
 const app = express();
 app.use(express.json());
 
-// 🧠 Almacenamiento en memoria para preguntas personalizadas
 const preguntasPorPaciente = {};
+const respuestasPorPaciente = {}; // 🔧 Nuevo almacenamiento para respuestas
 
-// 🔌 Endpoint para rascarle a OpenEvidence
+// 🧠 Scrapeo a OpenEvidence
 app.post("/pregunta", async (req, res) => {
   const { pregunta } = req.body;
 
@@ -52,7 +54,33 @@ app.post("/guardar-preguntas", (req, res) => {
   res.json({ status: "OK", mensaje: "Preguntas guardadas correctamente" });
 });
 
-// ✅ Consultar preguntas por ID (para formulario HTML)
+// ✅ Guardar respuestas de seguimiento por ID y enviar al webhook
+app.post("/guardar-respuestas", async (req, res) => {
+  const { idPaciente, respuestas } = req.body;
+
+  if (!idPaciente || !respuestas) {
+    return res.status(400).json({ error: "Faltan datos" });
+  }
+
+  respuestasPorPaciente[idPaciente] = respuestas;
+
+  const preguntas = preguntasPorPaciente[idPaciente] || [];
+
+  const combinado = {
+    idPaciente,
+    preguntas,
+    respuestas
+  };
+
+  try {
+    await axios.post("https://n8n-railway-production-adfa.up.railway.app/webhook/generar-pregunta-open-evidence", combinado);
+    res.json({ status: "OK", mensaje: "Respuestas guardadas y datos enviados al webhook" });
+  } catch (error) {
+    res.status(500).json({ error: "Error al enviar al webhook", detalle: error.message });
+  }
+});
+
+// 🧾 Consultar preguntas por ID
 app.get("/preguntas/:id", (req, res) => {
   const preguntas = preguntasPorPaciente[req.params.id];
 
@@ -63,8 +91,18 @@ app.get("/preguntas/:id", (req, res) => {
   res.json({ preguntas });
 });
 
+// 🧾 Consultar respuestas por ID
+app.get("/respuestas/:id", (req, res) => {
+  const respuestas = respuestasPorPaciente[req.params.id];
+
+  if (!respuestas) {
+    return res.status(404).json({ error: "No se encontraron respuestas para este ID" });
+  }
+
+  res.json({ respuestas });
+});
+
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Servidor Taylenio activo en el puerto ${PORT}`);
 });
-
