@@ -1,4 +1,3 @@
-
 const express = require("express");
 const puppeteer = require("puppeteer");
 const axios = require("axios");
@@ -7,7 +6,7 @@ const app = express();
 app.use(express.json());
 
 const preguntasPorPaciente = {};
-const respuestasPorPaciente = {}; // 🔧 Nuevo almacenamiento para respuestas
+const respuestasPorPaciente = {};
 
 // 🧠 Scrapeo a OpenEvidence
 app.post("/pregunta", async (req, res) => {
@@ -50,6 +49,8 @@ app.post("/guardar-preguntas", (req, res) => {
     return res.status(400).json({ error: "Faltan datos" });
   }
 
+  console.log("🔥 LO QUE RECIBO EN GUARDAR-PREGUNTAS:", req.body);  // <--- ESTA ES LA LÍNEA NUEVA (Log)
+
   preguntasPorPaciente[idPaciente] = preguntas;
   res.json({ status: "OK", mensaje: "Preguntas guardadas correctamente" });
 });
@@ -71,6 +72,8 @@ app.post("/guardar-respuestas", async (req, res) => {
     preguntas,
     respuestas
   };
+
+  console.log("🚀 LO QUE SE ENVÍA AL WEBHOOK:", combinado);  // <--- ESTA ES LA LÍNEA NUEVA (Log)
 
   try {
     await axios.post("https://n8n-railway-production-adfa.up.railway.app/webhook/generar-pregunta-open-evidence", combinado);
