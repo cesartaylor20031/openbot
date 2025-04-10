@@ -7,7 +7,7 @@
   },
   "scripts": {
     "start": "node bot.js",
-    "postinstall": "puppeteer install",   // 👈 ESTE ES EL TRUCO MÁGICO
+    "postinstall": "puppeteer install",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "puppeteer": {
