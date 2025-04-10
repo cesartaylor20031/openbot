@@ -102,5 +102,6 @@ app.get("/respuestas/:id", (req, res) => {
   res.json(respuestas || { error: "Sin respuestas" });
 });
 
+// **Puerto corregido para estar en 4000, ajustado para funcionar en Render**
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`Servidor activo en puerto ${PORT}`));
