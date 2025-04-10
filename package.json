@@ -7,8 +7,11 @@
   },
   "scripts": {
     "start": "node bot.js",
-    "install": "npm install puppeteer --unsafe-perm=true",
+    "postinstall": "puppeteer install",   // 👈 ESTE ES EL TRUCO MÁGICO
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "puppeteer": {
+    "default_browser_revision": "1350942"
   },
   "dependencies": {
     "axios": "^1.8.4",
