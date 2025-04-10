@@ -3,13 +3,17 @@ const cors = require("cors");
 const puppeteer = require("puppeteer");
 const axios = require("axios");
 
-// Inicialización de la app Express (FALTABA ESTO)
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 const preguntasPorPaciente = {};
 const respuestasPorPaciente = {};
+
+// 🧪 Ruta de prueba sencilla
+app.get("/test", (req, res) => {
+  res.json({ mensaje: "Servidor funcionando bien" });
+});
 
 // 🧠 Scrapeo a OpenEvidence
 app.post("/pregunta", async (req, res) => {
@@ -46,54 +50,22 @@ app.post("/pregunta", async (req, res) => {
 
 // ✅ Guardar preguntas personalizadas por ID (filtrado)
 app.post("/guardar-preguntas", (req, res) => {
-  if (!req.body) {
-    return res.status(400).json({ error: "Cuerpo de solicitud vacío" });
+  const { idPaciente, preguntas } = req.body;
+
+  if (!idPaciente || !preguntas) {
+    return res.status(400).json({ error: "Faltan datos necesarios" });
   }
 
-  let { idPaciente, preguntas } = req.body;
+  const preguntasArray = (Array.isArray(preguntas) ? preguntas : preguntas.split(','))
+    .map(p => p.trim())
+    .filter(p => p.endsWith('?'));
 
-  if (!idPaciente) {
-    return res.status(400).json({ error: "Se requiere idPaciente" });
-  }
+  preguntasPorPaciente[idPaciente] = preguntasArray;
 
-  if (!preguntas) {
-    return res.status(400).json({ error: "Se requiere el campo preguntas" });
-  }
-
-  idPaciente = idPaciente.toString().trim();
-  
-  let preguntasArray = [];
-  
-  if (Array.isArray(preguntas)) {
-    preguntasArray = preguntas.map(p => p.toString().trim());
-  } else if (typeof preguntas === 'string') {
-    preguntasArray = preguntas
-      .split(',')
-      .map(p => p.trim())
-      .filter(p => p);
-  }
-
-  preguntasArray = preguntasArray.filter(p => p.endsWith('?'));
-
-  console.log("🔥 LO QUE RECIBO EN GUARDAR-PREGUNTAS (FILTRADO):", { 
-    idPaciente, 
-    preguntas: preguntasArray 
-  });
-
-  try {
-    preguntasPorPaciente[idPaciente] = preguntasArray;
-    res.json({ 
-      status: "OK", 
-      mensaje: "Preguntas guardadas correctamente",
-      totalPreguntas: preguntasArray.length
-    });
-  } catch (error) {
-    console.error("Error al guardar preguntas:", error);
-    res.status(500).json({ error: "Error interno al guardar preguntas" });
-  }
+  res.json({ status: "OK", totalPreguntas: preguntasArray.length });
 });
 
-// ✅ Guardar respuestas de seguimiento por ID y enviar al webhook
+// ✅ Guardar respuestas y enviar webhook
 app.post("/guardar-respuestas", async (req, res) => {
   const { idPaciente, respuestas } = req.body;
 
@@ -103,47 +75,32 @@ app.post("/guardar-respuestas", async (req, res) => {
 
   respuestasPorPaciente[idPaciente] = respuestas;
 
-  const preguntas = preguntasPorPaciente[idPaciente] || [];
-
   const combinado = {
     idPaciente,
-    preguntas,
+    preguntas: preguntasPorPaciente[idPaciente] || [],
     respuestas
   };
 
-  console.log("🚀 LO QUE SE ENVÍA AL WEBHOOK:", combinado);
-
   try {
     await axios.post("https://n8n-railway-production-adfa.up.railway.app/webhook/generar-pregunta-open-evidence", combinado);
-    res.json({ status: "OK", mensaje: "Respuestas guardadas y datos enviados al webhook" });
+    res.json({ status: "OK", mensaje: "Enviado correctamente al webhook" });
   } catch (error) {
-    res.status(500).json({ error: "Error al enviar al webhook", detalle: error.message });
+    console.error("Error webhook:", error);
+    res.status(500).json({ error: "Error al webhook", detalle: error.message });
   }
 });
 
-// 🧾 Consultar preguntas por ID
+// 🧾 Consultar preguntas
 app.get("/preguntas/:id", (req, res) => {
   const preguntas = preguntasPorPaciente[req.params.id];
-
-  if (!preguntas) {
-    return res.status(404).json({ error: "No se encontraron preguntas para este ID" });
-  }
-
-  res.json({ preguntas });
+  res.json(preguntas || { error: "Sin preguntas" });
 });
 
-// 🧾 Consultar respuestas por ID
+// 🧾 Consultar respuestas
 app.get("/respuestas/:id", (req, res) => {
   const respuestas = respuestasPorPaciente[req.params.id];
-
-  if (!respuestas) {
-    return res.status(404).json({ error: "No se encontraron respuestas para este ID" });
-  }
-
-  res.json({ respuestas });
+  res.json(respuestas || { error: "Sin respuestas" });
 });
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`Servidor Taylenio activo en el puerto ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Servidor activo en puerto ${PORT}`));
