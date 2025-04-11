@@ -10,12 +10,10 @@ app.use(express.json());
 const preguntasPorPaciente = {};
 const respuestasPorPaciente = {};
 
-// 🧪 Ruta de prueba sencilla
 app.get("/test", (req, res) => {
   res.json({ mensaje: "Servidor funcionando bien" });
 });
 
-// 🧠 Scrapeo a OpenEvidence
 app.post("/pregunta", async (req, res) => {
   const { pregunta } = req.body;
 
@@ -36,7 +34,8 @@ app.post("/pregunta", async (req, res) => {
       timeout: 60000
     });
 
-    await page.waitForTimeout(5000); // espera extra por si carga lento
+    // Espera 5 segundos manualmente
+    await new Promise(r => setTimeout(r, 5000));
 
     const screenshotBase64 = await page.screenshot({
       fullPage: true,
@@ -45,17 +44,12 @@ app.post("/pregunta", async (req, res) => {
     });
     console.log("SCREENSHOT_BASE64:", screenshotBase64);
 
-    try {
-      await page.waitForSelector("textarea", { timeout: 60000 });
-    } catch (e) {
-      throw new Error("No se encontró el textarea. Tal vez cambió el diseño de la página.");
-    }
-
+    await page.waitForSelector("textarea", { timeout: 60000 });
     await page.type("textarea", pregunta);
     await page.keyboard.press("Enter");
 
     await page.waitForSelector(".markdown", { timeout: 30000 });
-    const respuesta = await page.$eval(".markdown", (el) => el.innerText);
+    const respuesta = await page.$eval(".markdown", el => el.innerText);
 
     await browser.close();
     res.json({ respuesta });
@@ -66,7 +60,6 @@ app.post("/pregunta", async (req, res) => {
   }
 });
 
-// ✅ Guardar preguntas personalizadas por ID (filtrado)
 app.post("/guardar-preguntas", (req, res) => {
   const { idPaciente, preguntas } = req.body;
 
@@ -75,15 +68,14 @@ app.post("/guardar-preguntas", (req, res) => {
   }
 
   const preguntasArray = (Array.isArray(preguntas) ? preguntas : preguntas.split(','))
-    .map((p) => p.trim())
-    .filter((p) => p.endsWith('?'));
+    .map(p => p.trim())
+    .filter(p => p.endsWith('?'));
 
   preguntasPorPaciente[idPaciente] = preguntasArray;
 
   res.json({ status: "OK", totalPreguntas: preguntasArray.length });
 });
 
-// ✅ Guardar respuestas y enviar webhook
 app.post("/guardar-respuestas", async (req, res) => {
   const { idPaciente, respuestas } = req.body;
 
@@ -111,18 +103,15 @@ app.post("/guardar-respuestas", async (req, res) => {
   }
 });
 
-// 🧾 Consultar preguntas
 app.get("/preguntas/:id", (req, res) => {
   const preguntas = preguntasPorPaciente[req.params.id];
   res.json(preguntas || { error: "Sin preguntas" });
 });
 
-// 🧾 Consultar respuestas
 app.get("/respuestas/:id", (req, res) => {
   const respuestas = respuestasPorPaciente[req.params.id];
   res.json(respuestas || { error: "Sin respuestas" });
 });
 
-// 🚀 Puerto para Render
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`Servidor activo en puerto ${PORT}`));
