@@ -32,12 +32,20 @@ app.post("/pregunta", async (req, res) => {
     const page = await browser.newPage();
     await page.goto("https://openevidence.ai", { waitUntil: "networkidle2" });
 
+    // Captura screenshot en Base64 para ver qué ve Puppeteer
+    const screenshotBase64 = await page.screenshot({
+      fullPage: true,
+      encoding: "base64"
+    });
+    console.log("SCREENSHOT_BASE64:", screenshotBase64);
+
+    // Ahora buscas el <textarea>
     await page.waitForSelector("textarea");
     await page.type("textarea", pregunta);
     await page.keyboard.press("Enter");
 
     await page.waitForSelector(".markdown", { timeout: 30000 });
-    const respuesta = await page.$eval(".markdown", el => el.innerText);
+    const respuesta = await page.$eval(".markdown", (el) => el.innerText);
 
     await browser.close();
     res.json({ respuesta });
@@ -57,8 +65,8 @@ app.post("/guardar-preguntas", (req, res) => {
   }
 
   const preguntasArray = (Array.isArray(preguntas) ? preguntas : preguntas.split(','))
-    .map(p => p.trim())
-    .filter(p => p.endsWith('?'));
+    .map((p) => p.trim())
+    .filter((p) => p.endsWith('?'));
 
   preguntasPorPaciente[idPaciente] = preguntasArray;
 
@@ -82,11 +90,16 @@ app.post("/guardar-respuestas", async (req, res) => {
   };
 
   try {
-    await axios.post("https://n8n-railway-production-adfa.up.railway.app/webhook/generar-pregunta-open-evidence", combinado);
+    await axios.post(
+      "https://n8n-railway-production-adfa.up.railway.app/webhook/generar-pregunta-open-evidence",
+      combinado
+    );
     res.json({ status: "OK", mensaje: "Enviado correctamente al webhook" });
   } catch (error) {
     console.error("Error webhook:", error);
-    res.status(500).json({ error: "Error al webhook", detalle: error.message });
+    res
+      .status(500)
+      .json({ error: "Error al webhook", detalle: error.message });
   }
 });
 
