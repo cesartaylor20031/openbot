@@ -6,7 +6,7 @@ WORKDIR /app
 
 # Copia archivos del proyecto
 COPY package*.json ./
-RUN npm install
+RUN npm install --unsafe-perm=true
 
 COPY . .
 
