@@ -68,6 +68,23 @@ app.post("/pregunta", async (req, res) => {
   }
 });
 
+// NUEVO ENDPOINT PARA GUARDAR RESPUESTAS DEL FORMULARIO 2
+app.post("/guardar-respuestas", async (req, res) => {
+  const { idPaciente, respuestas } = req.body;
+
+  if (!idPaciente || !respuestas) {
+    return res.status(400).json({
+      errorMessage: "Faltan datos",
+      errorDescription: "Se requiere idPaciente y respuestas",
+    });
+  }
+
+  console.log("📥 Respuestas recibidas del paciente:", idPaciente);
+  console.log(respuestas);
+
+  res.json({ mensaje: "Respuestas guardadas correctamente" });
+});
+
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`🚀 OpenBot corriendo en el puerto ${PORT}`);
