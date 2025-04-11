@@ -31,21 +31,17 @@ app.post("/pregunta", async (req, res) => {
       timeout: 60000,
     });
 
-    // Espera a que cargue bien el input
-    const inputSelector = "input[placeholder='Ask a medical question...']";
+    // Ahora OpenEvidence usa un <textarea> para las preguntas
+    const inputSelector = "textarea";
     await page.waitForSelector(inputSelector, { timeout: 60000 });
     await page.type(inputSelector, pregunta);
+    await page.keyboard.press("Enter");
 
-    // Espera a que el botón de submit esté disponible
-    const submitSelector = "button[type='submit']";
-    await page.waitForSelector(submitSelector, { timeout: 10000 });
-    await page.click(submitSelector);
-
-    // Espera a que salga la respuesta completa
+    // Espera a que aparezca una respuesta real
     await page.waitForSelector(".markdown", { timeout: 60000 });
     await page.waitForFunction(() => {
       const el = document.querySelector(".markdown");
-      return el && el.innerText.length > 100;
+      return el && el.innerText.length > 50;
     }, { timeout: 60000 });
 
     const respuesta = await page.$eval(".markdown", (el) => el.innerText);
