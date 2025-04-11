@@ -27,24 +27,33 @@ app.post("/pregunta", async (req, res) => {
     browser = await puppeteer.connect({ browserWSEndpoint: wsUrl });
     const page = await browser.newPage();
     await page.goto("https://openevidence.ai", {
-      waitUntil: "networkidle2",
+      waitUntil: "domcontentloaded",
       timeout: 60000,
     });
 
-    // Ahora OpenEvidence usa un <textarea> para las preguntas
+    // Espera a que el <textarea> esté visible
     const inputSelector = "textarea";
-    await page.waitForSelector(inputSelector, { timeout: 60000 });
+    await page.waitForSelector(inputSelector, { visible: true, timeout: 60000 });
     await page.type(inputSelector, pregunta);
+
+    // Forzamos el Enter como trigger de envío
     await page.keyboard.press("Enter");
 
-    // Espera a que aparezca una respuesta real
-    await page.waitForSelector(".markdown", { timeout: 60000 });
-    await page.waitForFunction(() => {
-      const el = document.querySelector(".markdown");
-      return el && el.innerText.length > 50;
-    }, { timeout: 60000 });
+    // Espera a que cargue algo real en el contenedor de respuesta
+    const outputSelector = ".markdown";
+    await page.waitForSelector(outputSelector, { timeout: 60000 });
 
-    const respuesta = await page.$eval(".markdown", (el) => el.innerText);
+    // Espera a que el texto tenga contenido (más robusto)
+    await page.waitForFunction(
+      (sel) => {
+        const el = document.querySelector(sel);
+        return el && el.innerText && el.innerText.length > 50;
+      },
+      { timeout: 60000 },
+      outputSelector
+    );
+
+    const respuesta = await page.$eval(outputSelector, (el) => el.innerText);
 
     if (!respuesta) {
       throw new Error("No se pudo extraer la respuesta de OpenEvidence.");
