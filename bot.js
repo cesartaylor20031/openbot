@@ -26,20 +26,25 @@ app.post("/pregunta", async (req, res) => {
   try {
     const browser = await puppeteer.launch({
       headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"]
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      protocolTimeout: 60000
     });
 
     const page = await browser.newPage();
-    await page.goto("https://openevidence.ai", { waitUntil: "domcontentloaded", timeout: 60000 });
+    await page.goto("https://openevidence.ai", {
+      waitUntil: "domcontentloaded",
+      timeout: 60000
+    });
 
-    // Screenshot para debug
+    await page.waitForTimeout(5000); // espera extra por si carga lento
+
     const screenshotBase64 = await page.screenshot({
       fullPage: true,
-      encoding: "base64"
+      encoding: "base64",
+      timeout: 60000
     });
     console.log("SCREENSHOT_BASE64:", screenshotBase64);
 
-    // Esperar el textarea con timeout extendido
     try {
       await page.waitForSelector("textarea", { timeout: 60000 });
     } catch (e) {
@@ -118,6 +123,6 @@ app.get("/respuestas/:id", (req, res) => {
   res.json(respuestas || { error: "Sin respuestas" });
 });
 
-// **Puerto corregido para estar en 4000, ajustado para funcionar en Render**
+// 🚀 Puerto para Render
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`Servidor activo en puerto ${PORT}`));
