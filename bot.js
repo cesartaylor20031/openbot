@@ -6,26 +6,27 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// 🧠 MAPA EN MEMORIA
+const preguntasPorPaciente = {}; // 🔁 Volátil (RAM)
+
+// 🔍 Verificación rápida
 app.get("/test", (req, res) => {
   res.json({ mensaje: "Servidor funcionando bien" });
 });
-
-// 🧠 MAPA EN MEMORIA
-const preguntasPorPaciente = {}; // 🔁 Se borra si se reinicia
 
 // 🔽 GUARDAR PREGUNTAS
 app.post("/guardar-preguntas", (req, res) => {
   const { uniqueId, preguntas } = req.body;
 
-  if (!uniqueId || !preguntas) {
+  if (!uniqueId || !Array.isArray(preguntas)) {
     return res.status(400).json({
       errorMessage: "Faltan datos",
-      errorDescription: "Se requiere uniqueId y preguntas",
+      errorDescription: "Se requiere uniqueId y arreglo de preguntas",
     });
   }
 
   preguntasPorPaciente[uniqueId] = preguntas;
-  console.log(`📦 Preguntas guardadas para el ID: ${uniqueId}`);
+  console.log(`📦 Preguntas guardadas para ID: ${uniqueId}`);
   res.json({ mensaje: "Preguntas guardadas correctamente" });
 });
 
@@ -41,7 +42,7 @@ app.get("/preguntas/:id", (req, res) => {
   res.json({ preguntas });
 });
 
-// 🧪 PREGUNTA MÉDICA CON BROWSERLESS + OpenEvidence
+// 🧪 CONSULTA EN OPENEVIDENCE VIA BROWSERLESS
 app.post("/pregunta", async (req, res) => {
   const { pregunta } = req.body;
 
@@ -67,17 +68,12 @@ app.post("/pregunta", async (req, res) => {
     });
 
     const inputSelector = "textarea";
-    console.log("⌛ Esperando el textarea...");
     await page.waitForSelector(inputSelector, { timeout: 60000 });
 
-    console.log("⌨️ Escribiendo la pregunta...");
     await page.type(inputSelector, pregunta);
     await page.keyboard.press("Enter");
 
-    console.log("📡 Esperando respuesta...");
     await page.waitForSelector(".markdown", { timeout: 60000 });
-
-    console.log("🧪 Esperando contenido significativo...");
     await page.waitForFunction(() => {
       const el = document.querySelector(".markdown");
       return el && el.innerText.length > 50;
@@ -89,8 +85,8 @@ app.post("/pregunta", async (req, res) => {
       throw new Error("No se pudo extraer la respuesta de OpenEvidence.");
     }
 
-    console.log("✅ Respuesta obtenida:", respuesta.slice(0, 200));
     await page.close();
+    console.log("✅ Respuesta obtenida:", respuesta.slice(0, 200));
     res.json({ respuesta });
 
   } catch (error) {
@@ -104,10 +100,10 @@ app.post("/pregunta", async (req, res) => {
 app.post("/guardar-respuestas", async (req, res) => {
   const { idPaciente, respuestas } = req.body;
 
-  if (!idPaciente || !respuestas) {
+  if (!idPaciente || !Array.isArray(respuestas)) {
     return res.status(400).json({
       errorMessage: "Faltan datos",
-      errorDescription: "Se requiere idPaciente y respuestas",
+      errorDescription: "Se requiere idPaciente y arreglo de respuestas",
     });
   }
 
