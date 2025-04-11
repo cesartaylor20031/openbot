@@ -4,16 +4,18 @@ FROM browserless/chrome:latest
 # Crea y usa directorio de trabajo
 WORKDIR /app
 
-# Copia archivos del proyecto
+# Copia solo los archivos de dependencias
 COPY package*.json ./
-RUN npm install --legacy-peer-deps --loglevel=verbose
 
+# Instala las dependencias, forzando a ignorar peleas de versiones y mostrando logs detallados
+RUN npm install --legacy-peer-deps --loglevel=verbose --unsafe-perm=true
 
+# Copia todo el resto del código
 COPY . .
 
-# Render usará esta variable para mapear el puerto
+# Define el puerto que usará tu bot (Render lo mapea a uno público)
 ENV PORT=4000
 EXPOSE 4000
 
-# Comando para correr tu bot
+# Comando que arranca tu bot
 CMD ["node", "bot.js"]
