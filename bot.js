@@ -34,24 +34,24 @@ app.post("/pregunta", async (req, res) => {
       timeout: 60000
     });
 
-    // Espera opcional (por si no ha terminado de renderizar)
+    // 💤 Espera opcional
     await new Promise(r => setTimeout(r, 5000));
 
-    // Screenshot base64 para debug
+    // 📸 Screenshot para debug
     const screenshotBase64 = await page.screenshot({
       fullPage: true,
       encoding: "base64"
     });
     console.log("SCREENSHOT_BASE64:", screenshotBase64);
 
-    // 🛠️ CAMBIO CLAVE: usar el input correcto
-    await page.waitForSelector("input[placeholder='Ask a medical question...']", { timeout: 60000 });
-    await page.type("input[placeholder='Ask a medical question...']", pregunta);
+    // ✅ CAMBIO CLAVE: selector más genérico y resistente
+    await page.waitForSelector("input[type='text']", { timeout: 60000 });
+    await page.type("input[type='text']", pregunta);
 
-    // ⏩ Dar clic en botón de enviar
+    // 🧨 Click en botón de enviar
     await page.click("button[type='submit']");
 
-    // Esperar a que aparezca la respuesta
+    // 🧠 Espera la respuesta en .markdown
     await page.waitForSelector(".markdown", { timeout: 30000 });
     const respuesta = await page.$eval(".markdown", el => el.innerText);
 
