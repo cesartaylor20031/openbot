@@ -30,17 +30,22 @@ app.post("/pregunta", async (req, res) => {
     });
 
     const page = await browser.newPage();
-    await page.goto("https://openevidence.ai", { waitUntil: "networkidle2" });
+    await page.goto("https://openevidence.ai", { waitUntil: "domcontentloaded", timeout: 60000 });
 
-    // Captura screenshot en Base64 para ver qué ve Puppeteer
+    // Screenshot para debug
     const screenshotBase64 = await page.screenshot({
       fullPage: true,
       encoding: "base64"
     });
     console.log("SCREENSHOT_BASE64:", screenshotBase64);
 
-    // Ahora buscas el <textarea>
-    await page.waitForSelector("textarea");
+    // Esperar el textarea con timeout extendido
+    try {
+      await page.waitForSelector("textarea", { timeout: 60000 });
+    } catch (e) {
+      throw new Error("No se encontró el textarea. Tal vez cambió el diseño de la página.");
+    }
+
     await page.type("textarea", pregunta);
     await page.keyboard.press("Enter");
 
@@ -52,7 +57,7 @@ app.post("/pregunta", async (req, res) => {
 
   } catch (error) {
     console.error("Error rascándole a OpenEvidence:", error);
-    res.status(500).json({ error: "Algo salió mal, compa" });
+    res.status(500).json({ error: "Algo salió mal, compa", detalle: error.message });
   }
 });
 
@@ -97,9 +102,7 @@ app.post("/guardar-respuestas", async (req, res) => {
     res.json({ status: "OK", mensaje: "Enviado correctamente al webhook" });
   } catch (error) {
     console.error("Error webhook:", error);
-    res
-      .status(500)
-      .json({ error: "Error al webhook", detalle: error.message });
+    res.status(500).json({ error: "Error al webhook", detalle: error.message });
   }
 });
 
