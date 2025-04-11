@@ -34,20 +34,24 @@ app.post("/pregunta", async (req, res) => {
       timeout: 60000
     });
 
-    // Espera 5 segundos manualmente
+    // Espera opcional (por si no ha terminado de renderizar)
     await new Promise(r => setTimeout(r, 5000));
 
+    // Screenshot base64 para debug
     const screenshotBase64 = await page.screenshot({
       fullPage: true,
-      encoding: "base64",
-      timeout: 60000
+      encoding: "base64"
     });
     console.log("SCREENSHOT_BASE64:", screenshotBase64);
 
-    await page.waitForSelector("textarea", { timeout: 60000 });
-    await page.type("textarea", pregunta);
-    await page.keyboard.press("Enter");
+    // 🛠️ CAMBIO CLAVE: usar el input correcto
+    await page.waitForSelector("input[placeholder='Ask a medical question...']", { timeout: 60000 });
+    await page.type("input[placeholder='Ask a medical question...']", pregunta);
 
+    // ⏩ Dar clic en botón de enviar
+    await page.click("button[type='submit']");
+
+    // Esperar a que aparezca la respuesta
     await page.waitForSelector(".markdown", { timeout: 30000 });
     const respuesta = await page.$eval(".markdown", el => el.innerText);
 
