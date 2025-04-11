@@ -27,15 +27,27 @@ app.post("/pregunta", async (req, res) => {
     browser = await puppeteer.connect({ browserWSEndpoint: wsUrl });
     const page = await browser.newPage();
     await page.goto("https://openevidence.ai", {
-      waitUntil: "domcontentloaded",
+      waitUntil: "networkidle2",
       timeout: 60000,
     });
 
-    await page.waitForSelector("input[placeholder='Ask a medical question...']", { timeout: 60000 });
-    await page.type("input[placeholder='Ask a medical question...']", pregunta);
-    await page.click("button[type='submit']");
+    // Espera a que cargue bien el input
+    const inputSelector = "input[placeholder='Ask a medical question...']";
+    await page.waitForSelector(inputSelector, { timeout: 60000 });
+    await page.type(inputSelector, pregunta);
 
-    await page.waitForSelector(".markdown", { timeout: 30000 });
+    // Espera a que el botón de submit esté disponible
+    const submitSelector = "button[type='submit']";
+    await page.waitForSelector(submitSelector, { timeout: 10000 });
+    await page.click(submitSelector);
+
+    // Espera a que salga la respuesta completa
+    await page.waitForSelector(".markdown", { timeout: 60000 });
+    await page.waitForFunction(() => {
+      const el = document.querySelector(".markdown");
+      return el && el.innerText.length > 100;
+    }, { timeout: 60000 });
+
     const respuesta = await page.$eval(".markdown", (el) => el.innerText);
 
     if (!respuesta) {
@@ -43,12 +55,12 @@ app.post("/pregunta", async (req, res) => {
     }
 
     console.log("✅ Respuesta obtenida:", respuesta.slice(0, 200));
-    await page.close(); // No cerramos el browser, solo la pestaña
+    await page.close();
     res.json({ respuesta });
 
   } catch (error) {
     console.error("❌ Error rascándole a OpenEvidence:", error);
-    if (browser) await browser.close(); // Cierra si algo truena
+    if (browser) await browser.close();
     res.status(500).json({ error: "Algo salió mal, compa", detalle: error.message });
   }
 });
