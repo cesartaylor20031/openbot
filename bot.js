@@ -23,7 +23,7 @@ app.post("/pregunta", async (req, res) => {
 
   try {
     const browser = await puppeteer.connect({
-      browserWSEndpoint: `wss://chrome.browserless.io?token=S6lhR1nl9d2KZU5350378ac84676c05d9beb9cfda8`,
+      browserWSEndpoint: process.env.BROWSERLESS_URL || `wss://chrome.browserless.io?token=S6lhR1nl9d2KZU5350378ac84676c05d9beb9cfda8`,
     });
 
     const page = await browser.newPage();
@@ -39,7 +39,7 @@ app.post("/pregunta", async (req, res) => {
     await page.waitForSelector(".markdown", { timeout: 30000 });
     const respuesta = await page.$eval(".markdown", (el) => el.innerText);
 
-    await browser.close();
+    await page.close(); // No cerrar browser, solo pestaña
     res.json({ respuesta });
 
   } catch (error) {
@@ -47,3 +47,4 @@ app.post("/pregunta", async (req, res) => {
     res.status(500).json({ error: "Algo salió mal, compa", detalle: error.message });
   }
 });
+
