@@ -23,37 +23,35 @@ app.post("/pregunta", async (req, res) => {
     const wsUrl = `wss://chrome.browserless.io?token=${BROWSERLESS_TOKEN}`;
 
     console.log("🧠 Pregunta recibida:", pregunta);
+    console.log("🧩 Conectando a Browserless...");
 
     browser = await puppeteer.connect({ browserWSEndpoint: wsUrl });
     const page = await browser.newPage();
+
+    console.log("🌐 Abriendo OpenEvidence...");
     await page.goto("https://openevidence.ai", {
-      waitUntil: "domcontentloaded",
+      waitUntil: "networkidle2",
       timeout: 60000,
     });
 
-    // Espera a que el <textarea> esté visible
     const inputSelector = "textarea";
-    await page.waitForSelector(inputSelector, { visible: true, timeout: 60000 });
-    await page.type(inputSelector, pregunta);
+    console.log("⌛ Esperando el textarea...");
+    await page.waitForSelector(inputSelector, { timeout: 60000 });
 
-    // Forzamos el Enter como trigger de envío
+    console.log("⌨️ Escribiendo la pregunta...");
+    await page.type(inputSelector, pregunta);
     await page.keyboard.press("Enter");
 
-    // Espera a que cargue algo real en el contenedor de respuesta
-    const outputSelector = ".markdown";
-    await page.waitForSelector(outputSelector, { timeout: 60000 });
+    console.log("📡 Esperando respuesta...");
+    await page.waitForSelector(".markdown", { timeout: 60000 });
 
-    // Espera a que el texto tenga contenido (más robusto)
-    await page.waitForFunction(
-      (sel) => {
-        const el = document.querySelector(sel);
-        return el && el.innerText && el.innerText.length > 50;
-      },
-      { timeout: 60000 },
-      outputSelector
-    );
+    console.log("🧪 Esperando contenido significativo...");
+    await page.waitForFunction(() => {
+      const el = document.querySelector(".markdown");
+      return el && el.innerText.length > 50;
+    }, { timeout: 60000 });
 
-    const respuesta = await page.$eval(outputSelector, (el) => el.innerText);
+    const respuesta = await page.$eval(".markdown", (el) => el.innerText);
 
     if (!respuesta) {
       throw new Error("No se pudo extraer la respuesta de OpenEvidence.");
