@@ -25,22 +25,22 @@ app.post("/pregunta", async (req, res) => {
     const browser = await puppeteer.launch({
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      protocolTimeout: 60000
+      protocolTimeout: 90000
     });
 
     const page = await browser.newPage();
     await page.goto("https://openevidence.ai", {
-      waitUntil: "domcontentloaded",
-      timeout: 60000
+      waitUntil: "networkidle0", // 👈 Espera a que se calme la red
+      timeout: 90000
     });
 
-    await new Promise(r => setTimeout(r, 5000));
+    await new Promise(r => setTimeout(r, 5000)); // 👈 Le damos chance a React
 
     await page.waitForSelector("input[placeholder='Ask a medical question...']", { timeout: 60000 });
     await page.type("input[placeholder='Ask a medical question...']", pregunta);
-    await page.click("button[type='submit']");
+    await page.keyboard.press("Enter");
 
-    await page.waitForSelector(".markdown", { timeout: 30000 });
+    await page.waitForSelector(".markdown", { timeout: 60000 });
     const respuesta = await page.$eval(".markdown", el => el.innerText);
 
     await browser.close();
