@@ -10,6 +10,38 @@ app.get("/test", (req, res) => {
   res.json({ mensaje: "Servidor funcionando bien" });
 });
 
+// 🧠 MAPA EN MEMORIA
+const preguntasPorPaciente = {}; // 🔁 Se borra si se reinicia
+
+// 🔽 GUARDAR PREGUNTAS
+app.post("/guardar-preguntas", (req, res) => {
+  const { uniqueId, preguntas } = req.body;
+
+  if (!uniqueId || !preguntas) {
+    return res.status(400).json({
+      errorMessage: "Faltan datos",
+      errorDescription: "Se requiere uniqueId y preguntas",
+    });
+  }
+
+  preguntasPorPaciente[uniqueId] = preguntas;
+  console.log(`📦 Preguntas guardadas para el ID: ${uniqueId}`);
+  res.json({ mensaje: "Preguntas guardadas correctamente" });
+});
+
+// 🔽 CONSULTAR PREGUNTAS
+app.get("/preguntas/:id", (req, res) => {
+  const id = req.params.id;
+  const preguntas = preguntasPorPaciente[id];
+
+  if (!preguntas) {
+    return res.status(404).json({ error: "No se encontraron preguntas para este ID" });
+  }
+
+  res.json({ preguntas });
+});
+
+// 🧪 PREGUNTA MÉDICA CON BROWSERLESS + OpenEvidence
 app.post("/pregunta", async (req, res) => {
   const { pregunta } = req.body;
 
@@ -68,7 +100,7 @@ app.post("/pregunta", async (req, res) => {
   }
 });
 
-// NUEVO ENDPOINT PARA GUARDAR RESPUESTAS DEL FORMULARIO 2
+// 📥 GUARDAR RESPUESTAS DEL FORMULARIO 2
 app.post("/guardar-respuestas", async (req, res) => {
   const { idPaciente, respuestas } = req.body;
 
