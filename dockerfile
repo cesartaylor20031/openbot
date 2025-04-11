@@ -6,7 +6,8 @@ WORKDIR /app
 
 # Copia archivos del proyecto
 COPY package*.json ./
-RUN npm install --unsafe-perm=true
+RUN npm install --legacy-peer-deps --loglevel=verbose
+
 
 COPY . .
 
