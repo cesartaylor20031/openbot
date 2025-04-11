@@ -22,66 +22,54 @@ app.post("/pregunta", async (req, res) => {
   }
 
   try {
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      protocolTimeout: 90000
+    const browser = await puppeteer.connect({
+      browserWSEndpoint: `wss://chrome.browserless.io?token=S6lhR1nl9d2KZU5350378ac84676c05d9beb9cfda8`,
     });
 
     const page = await browser.newPage();
     await page.goto("https://openevidence.ai", {
-      waitUntil: "networkidle0", // 👈 Espera a que se calme la red
-      timeout: 90000
+      waitUntil: "domcontentloaded",
+      timeout: 60000,
     });
 
-    await new Promise(r => setTimeout(r, 5000)); // 👈 Le damos chance a React
+    await new Promise((r) => setTimeout(r, 5000));
 
-    await page.waitForSelector("input[placeholder='Ask a medical question...']", { timeout: 60000 });
+    await page.waitForSelector("input[placeholder='Ask a medical question...']", {
+      timeout: 60000,
+    });
     await page.type("input[placeholder='Ask a medical question...']", pregunta);
-    await page.keyboard.press("Enter");
+    await page.click("button[type='submit']");
 
     await page.waitForSelector(".markdown", { timeout: 60000 });
-    const respuesta = await page.$eval(".markdown", el => el.innerText);
+    const respuesta = await page.$eval(".markdown", (el) => el.innerText);
 
     await browser.close();
     res.json({ respuesta });
 
   } catch (error) {
-    console.error("Error rascándole a OpenEvidence:", error);
-    res.status(500).json({ error: "Algo salió mal, compa", detalle: error.message });
+    console.error("Error con Browserless:", error);
+    res.status(500).json({
+      error: "Algo salió mal, compa",
+      detalle: error.message,
+    });
   }
 });
 
+// Resto del código igual...
+
 app.post("/guardar-preguntas", (req, res) => {
   const { idPaciente, preguntas } = req.body;
-
-  if (!idPaciente || !preguntas) {
-    return res.status(400).json({ error: "Faltan datos necesarios" });
-  }
-
-  const preguntasArray = (Array.isArray(preguntas) ? preguntas : preguntas.split(','))
-    .map(p => p.trim())
-    .filter(p => p.endsWith('?'));
-
+  if (!idPaciente || !preguntas) return res.status(400).json({ error: "Faltan datos necesarios" });
+  const preguntasArray = (Array.isArray(preguntas) ? preguntas : preguntas.split(',')).map(p => p.trim()).filter(p => p.endsWith('?'));
   preguntasPorPaciente[idPaciente] = preguntasArray;
-
   res.json({ status: "OK", totalPreguntas: preguntasArray.length });
 });
 
 app.post("/guardar-respuestas", async (req, res) => {
   const { idPaciente, respuestas } = req.body;
-
-  if (!idPaciente || !respuestas) {
-    return res.status(400).json({ error: "Faltan datos" });
-  }
-
+  if (!idPaciente || !respuestas) return res.status(400).json({ error: "Faltan datos" });
   respuestasPorPaciente[idPaciente] = respuestas;
-
-  const combinado = {
-    idPaciente,
-    preguntas: preguntasPorPaciente[idPaciente] || [],
-    respuestas
-  };
+  const combinado = { idPaciente, preguntas: preguntasPorPaciente[idPaciente] || [], respuestas };
 
   try {
     await axios.post(
