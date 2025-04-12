@@ -1,13 +1,24 @@
+
 const express = require("express");
 const cors = require("cors");
 const puppeteer = require("puppeteer-core");
+const fs = require("fs");
+const path = require("path");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 🧠 MAPA EN MEMORIA
-const preguntasPorPaciente = {}; // 🔁 Volátil (RAM)
+const DATA_FILE = path.join(__dirname, "preguntas.json");
+
+let preguntasPorPaciente = {};
+try {
+  preguntasPorPaciente = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+  console.log("✅ preguntas.json cargado con éxito");
+} catch (e) {
+  console.log("📂 No se encontró preguntas.json, se iniciará vacío");
+  preguntasPorPaciente = {};
+}
 
 // 🔍 Verificación rápida
 app.get("/test", (req, res) => {
@@ -37,7 +48,14 @@ app.post("/guardar-preguntas", (req, res) => {
   }
 
   preguntasPorPaciente[uniqueId] = preguntas;
-  console.log(`📦 Preguntas guardadas para ID: ${uniqueId}`);
+
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(preguntasPorPaciente, null, 2));
+    console.log(`📦 Preguntas guardadas y persistidas para ID: ${uniqueId}`);
+  } catch (e) {
+    console.error("❌ Error al guardar preguntas.json:", e.message);
+  }
+
   res.json({ mensaje: "Preguntas guardadas correctamente" });
 });
 
