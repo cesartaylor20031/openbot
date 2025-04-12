@@ -1,4 +1,4 @@
-  const express = require("express");
+const express = require("express");
 const cors = require("cors");
 const puppeteer = require("puppeteer-core");
 
@@ -18,9 +18,10 @@ app.get("/test", (req, res) => {
 app.post("/guardar-preguntas", (req, res) => {
   console.log("🧠 POST /guardar-preguntas - Body recibido:", req.body);
 
-  const { uniqueId, preguntas } = req.body;
+  const uniqueId = req.body.uniqueId || req.body.idPaciente;
+  const preguntas = req.body.preguntas;
 
-  console.log("🔎 uniqueId:", uniqueId);
+  console.log("🔎 uniqueId (o idPaciente):", uniqueId);
   console.log("🧾 preguntas:", preguntas);
 
   if (!uniqueId || !Array.isArray(preguntas)) {
