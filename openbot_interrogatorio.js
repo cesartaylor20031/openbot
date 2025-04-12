@@ -1,5 +1,3 @@
-// openbot_interrogatorio.js
-
 const express = require('express');
 const bodyParser = require('body-parser');
 const { Configuration, OpenAIApi } = require('openai');
@@ -63,8 +61,18 @@ Estilo de vida: ${estilo_vida}
       temperature: 0.7
     });
 
-    const output = response.data.choices[0].message.content;
-    res.status(200).json({ resultado: output });
+    const outputRaw = response.data.choices[0].message.content;
+    let output;
+
+    try {
+      output = JSON.parse(outputRaw);
+    } catch (err) {
+      console.error("❌ Error al parsear JSON generado por GPT:", err);
+      return res.status(500).json({ error: 'Respuesta de IA mal formada' });
+    }
+
+    res.status(200).json(output);
+
   } catch (err) {
     console.error('Error al generar interrogatorio:', err);
     res.status(500).json({ error: 'Error generando el interrogatorio clínico' });
