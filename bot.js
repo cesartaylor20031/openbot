@@ -72,11 +72,16 @@ Estilo de vida: ${estilo_vida}
       output = JSON.parse(outputRaw);
     } catch (err) {
       console.error("❌ Error al parsear JSON generado por GPT:", err);
-      return res.status(500).json({ error: 'Respuesta de IA mal formada' });
+      return res.status(500).json({ error: 'Respuesta de IA mal formada', raw: outputRaw });
     }
 
     // 🧠 Obtener el ID único del paciente para guardar preguntas
-    const uniqueId = req.body.uniqueId || req.body.idPaciente || 'desconocido';
+    const uniqueId = req.body.uniqueId || req.body.idPaciente || 'desconocido_' + Date.now();
+
+    // ⚠️ Validar que vengan preguntas antes de guardar
+    if (!output.preguntas || !Array.isArray(output.preguntas)) {
+      return res.status(500).json({ error: 'La IA no devolvió un arreglo de preguntas válido', output });
+    }
 
     // ✅ Guardar preguntas en memoria
     preguntasPorPaciente[uniqueId] = output.preguntas;
@@ -89,8 +94,8 @@ Estilo de vida: ${estilo_vida}
     });
 
   } catch (err) {
-    console.error('Error al generar interrogatorio:', err);
-    res.status(500).json({ error: 'Error generando el interrogatorio clínico' });
+    console.error('💥 Error en generación de interrogatorio:', err);
+    res.status(500).json({ error: 'Error generando el interrogatorio clínico (GPT u OpenAI)' });
   }
 });
 
@@ -105,5 +110,5 @@ app.get('/preguntas/:id', (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`OpenBot Interrogatorio escuchando en puerto ${port}`);
+  console.log(`🔥 OpenBot Interrogatorio escuchando en puerto ${port}`);
 });
