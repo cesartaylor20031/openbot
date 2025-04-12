@@ -6,6 +6,9 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 3000;
 
+// 🧠 Mapa volátil en RAM para almacenar preguntas
+const preguntasPorPaciente = {};
+
 app.use(bodyParser.json());
 
 app.post('/interrogatorio', async (req, res) => {
@@ -61,13 +64,44 @@ Estilo de vida: ${estilo_vida}
       temperature: 0.7
     });
 
-    const output = response.data.choices[0].message.content;
-    res.status(200).json({ resultado: output });
+    const outputRaw = response.data.choices[0].message.content;
+
+    // 🔍 Convertimos texto a objeto real de JS
+    let output;
+    try {
+      output = JSON.parse(outputRaw);
+    } catch (err) {
+      console.error("❌ Error al parsear JSON generado por GPT:", err);
+      return res.status(500).json({ error: 'Respuesta de IA mal formada' });
+    }
+
+    // 🧠 Obtener el ID único del paciente para guardar preguntas
+    const uniqueId = req.body.uniqueId || req.body.idPaciente || 'desconocido';
+
+    // ✅ Guardar preguntas en memoria
+    preguntasPorPaciente[uniqueId] = output.preguntas;
+
+    // 📦 Confirmar guardado y enviar respuesta al cliente
+    res.status(200).json({
+      mensaje: 'Preguntas generadas y guardadas correctamente',
+      id: uniqueId,
+      preguntas: output.preguntas
+    });
 
   } catch (err) {
     console.error('Error al generar interrogatorio:', err);
     res.status(500).json({ error: 'Error generando el interrogatorio clínico' });
   }
+});
+
+// 🧪 Para pruebas: ver preguntas por ID
+app.get('/preguntas/:id', (req, res) => {
+  const id = req.params.id;
+  const preguntas = preguntasPorPaciente[id];
+  if (!preguntas) {
+    return res.status(404).json({ error: 'No se encontraron preguntas para este ID' });
+  }
+  res.status(200).json({ id, preguntas });
 });
 
 app.listen(port, () => {
