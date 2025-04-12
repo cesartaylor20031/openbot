@@ -12,7 +12,7 @@ const preguntasPorPaciente = {};
 app.use(bodyParser.json());
 
 app.post('/interrogatorio', async (req, res) => {
-  const patientData = req.body.patientData;
+  const patientData = req.body.patientData || req.body;
 
   if (!patientData || !patientData.personalInformation) {
     return res.status(400).json({ error: 'Datos del paciente incompletos o ausentes' });
