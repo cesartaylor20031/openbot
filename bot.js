@@ -1,132 +1,76 @@
-const express = require("express");
-const cors = require("cors");
-const puppeteer = require("puppeteer-core");
+const express = require('express');
+const bodyParser = require('body-parser');
+const { Configuration, OpenAIApi } = require('openai');
+require('dotenv').config();
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+const port = process.env.PORT || 3000;
 
-// 🧠 MAPA EN MEMORIA
-const preguntasPorPaciente = {}; // 🔁 Volátil (RAM)
+app.use(bodyParser.json());
 
-// 🔍 Verificación rápida
-app.get("/test", (req, res) => {
-  res.json({ mensaje: "Servidor funcionando bien" });
-});
+app.post('/interrogatorio', async (req, res) => {
+  const patientData = req.body.patientData;
 
-// 🔽 GUARDAR PREGUNTAS CON PARCHE DE TIPO + LIMPIEZA DE ID
-app.post("/guardar-preguntas", (req, res) => {
-  console.log("🧠 POST /guardar-preguntas - Body recibido:", req.body);
-
-  let uniqueId = req.body.uniqueId || req.body.idPaciente || "";
-  uniqueId = uniqueId.trim(); // 🧼 Limpiar espacios, saltos de línea, etc.
-
-  let preguntas = req.body.preguntas;
-
-  // 💉 Parche: convertir string a array si es necesario
-  if (typeof preguntas === "string") {
-    preguntas = preguntas.split(",").map(p => p.trim());
+  if (!patientData || !patientData.personalInformation) {
+    return res.status(400).json({ error: 'Datos del paciente incompletos o ausentes' });
   }
 
-  console.log("🔎 uniqueId (o idPaciente):", uniqueId);
-  console.log("🧾 preguntas:", preguntas);
+  const { personalInformation, medicalHistory, currentCondition } = patientData;
+  const nombre = personalInformation.nombre;
+  const correo = personalInformation.correo;
+  const whatsapp = personalInformation.whatsapp;
+  const edadSexoOcupacion = personalInformation.edad_sexo_ocupacion;
 
-  if (!uniqueId || !Array.isArray(preguntas)) {
-    return res.status(400).json({
-      errorMessage: "Faltan datos",
-      errorDescription: "Se requiere uniqueId y arreglo de preguntas",
-    });
-  }
+  const padecimiento = currentCondition.padecimiento;
+  const extra = currentCondition.extra;
+  const heredofamiliares = medicalHistory.heredofamiliares;
+  const patologicos = medicalHistory.patologicos;
+  const estilo_vida = medicalHistory.estilo_vida;
 
-  preguntasPorPaciente[uniqueId] = preguntas;
-  console.log(`📦 Preguntas guardadas para ID: ${uniqueId}`);
-  res.json({ mensaje: "Preguntas guardadas correctamente" });
-});
+  const prompt = `
+Eres un médico clínico experto. Con base en los siguientes datos, elabora un conjunto de preguntas clínicas personalizadas y detalladas que permitan obtener información semiológica clave para el diagnóstico. Solo responde en formato JSON:
 
-// 🔽 CONSULTAR PREGUNTAS
-app.get("/preguntas/:id", (req, res) => {
-  const id = req.params.id.trim(); // 🧼 Limpiar ID antes de buscarlo
-  const preguntas = preguntasPorPaciente[id];
+{
+  "nombre": "${nombre}",
+  "correo": "${correo}",
+  "whatsapp": "${whatsapp}",
+  "edad_sexo_ocupacion": "${edadSexoOcupacion}",
+  "preguntas": ["Pregunta 1", "Pregunta 2", ...]
+}
 
-  if (!preguntas) {
-    return res.status(404).json({ error: "No se encontraron preguntas para este ID" });
-  }
+### Datos del paciente:
+Nombre: ${nombre}
+Edad/Sexo/Ocupación: ${edadSexoOcupacion}
+Padecimiento actual: ${padecimiento}
+Detalles adicionales: ${extra}
+Historial familiar: ${heredofamiliares}
+Historial patológico: ${patologicos}
+Estilo de vida: ${estilo_vida}
+  `;
 
-  res.json({ preguntas });
-});
-
-// 🧪 CONSULTA EN OPENEVIDENCE VIA BROWSERLESS
-app.post("/pregunta", async (req, res) => {
-  const { pregunta } = req.body;
-
-  if (!pregunta) {
-    return res.status(400).json({ error: "Falta el campo 'pregunta'" });
-  }
-
-  let browser;
   try {
-    const BROWSERLESS_TOKEN = process.env.BROWSERLESS_TOKEN || "S6lhR1nl9d2KZU5350378ac84676c05d9beb9cfda8";
-    const wsUrl = `wss://chrome.browserless.io?token=${BROWSERLESS_TOKEN}`;
+    const configuration = new Configuration({ apiKey: process.env.OPENAI_API_KEY });
+    const openai = new OpenAIApi(configuration);
 
-    console.log("🧠 Pregunta recibida:", pregunta);
-    console.log("🧩 Conectando a Browserless...");
-
-    browser = await puppeteer.connect({ browserWSEndpoint: wsUrl });
-    const page = await browser.newPage();
-
-    console.log("🌐 Abriendo OpenEvidence...");
-    await page.goto("https://openevidence.ai", {
-      waitUntil: "networkidle2",
-      timeout: 60000,
+    const response = await openai.createChatCompletion({
+      model: 'gpt-4',
+      messages: [
+        { role: 'system', content: 'Eres un médico experto en interrogatorio clínico.' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.7
     });
 
-    const inputSelector = "textarea";
-    await page.waitForSelector(inputSelector, { timeout: 60000 });
+    const output = response.data.choices[0].message.content;
+    res.status(200).json({ resultado: output });
 
-    await page.type(inputSelector, pregunta);
-    await page.keyboard.press("Enter");
-
-    await page.waitForSelector(".markdown", { timeout: 60000 });
-    await page.waitForFunction(() => {
-      const el = document.querySelector(".markdown");
-      return el && el.innerText.length > 50;
-    }, { timeout: 60000 });
-
-    const respuesta = await page.$eval(".markdown", (el) => el.innerText);
-
-    if (!respuesta) {
-      throw new Error("No se pudo extraer la respuesta de OpenEvidence.");
-    }
-
-    await page.close();
-    console.log("✅ Respuesta obtenida:", respuesta.slice(0, 200));
-    res.json({ respuesta });
-
-  } catch (error) {
-    console.error("❌ Error rascándole a OpenEvidence:", error);
-    if (browser) await browser.close();
-    res.status(500).json({ error: "Algo salió mal, compa", detalle: error.message });
+  } catch (err) {
+    console.error('Error al generar interrogatorio:', err);
+    res.status(500).json({ error: 'Error generando el interrogatorio clínico' });
   }
 });
 
-// 📥 GUARDAR RESPUESTAS DEL FORMULARIO 2
-app.post("/guardar-respuestas", async (req, res) => {
-  const { idPaciente, respuestas } = req.body;
-
-  if (!idPaciente || !Array.isArray(respuestas)) {
-    return res.status(400).json({
-      errorMessage: "Faltan datos",
-      errorDescription: "Se requiere idPaciente y arreglo de respuestas",
-    });
-  }
-
-  console.log("📥 Respuestas recibidas del paciente:", idPaciente);
-  console.log(respuestas);
-
-  res.json({ mensaje: "Respuestas guardadas correctamente" });
+app.listen(port, () => {
+  console.log(`OpenBot Interrogatorio escuchando en puerto ${port}`);
 });
 
-const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`🚀 OpenBot corriendo en el puerto ${PORT}`);
-});
