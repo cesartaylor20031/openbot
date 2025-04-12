@@ -73,4 +73,3 @@ Estilo de vida: ${estilo_vida}
 app.listen(port, () => {
   console.log(`OpenBot Interrogatorio escuchando en puerto ${port}`);
 });
-
