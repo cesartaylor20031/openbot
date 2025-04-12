@@ -14,11 +14,13 @@ app.get("/test", (req, res) => {
   res.json({ mensaje: "Servidor funcionando bien" });
 });
 
-// 🔽 GUARDAR PREGUNTAS CON PARCHE DE TIPO
+// 🔽 GUARDAR PREGUNTAS CON PARCHE DE TIPO + LIMPIEZA DE ID
 app.post("/guardar-preguntas", (req, res) => {
   console.log("🧠 POST /guardar-preguntas - Body recibido:", req.body);
 
-  const uniqueId = req.body.uniqueId || req.body.idPaciente;
+  let uniqueId = req.body.uniqueId || req.body.idPaciente || "";
+  uniqueId = uniqueId.trim(); // 🧼 Limpiar espacios, saltos de línea, etc.
+
   let preguntas = req.body.preguntas;
 
   // 💉 Parche: convertir string a array si es necesario
@@ -43,7 +45,7 @@ app.post("/guardar-preguntas", (req, res) => {
 
 // 🔽 CONSULTAR PREGUNTAS
 app.get("/preguntas/:id", (req, res) => {
-  const id = req.params.id;
+  const id = req.params.id.trim(); // 🧼 Limpiar ID antes de buscarlo
   const preguntas = preguntasPorPaciente[id];
 
   if (!preguntas) {
