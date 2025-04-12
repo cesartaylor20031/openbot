@@ -13,10 +13,16 @@ const DATA_FILE = path.join(__dirname, "preguntas.json");
 
 let preguntasPorPaciente = {};
 try {
-  preguntasPorPaciente = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
-  console.log("✅ preguntas.json cargado con éxito");
+  if (fs.existsSync(DATA_FILE)) {
+    preguntasPorPaciente = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+    console.log("✅ preguntas.json cargado con éxito");
+  } else {
+    console.log("📂 preguntas.json no existe, creando vacío...");
+    preguntasPorPaciente = {};
+    fs.writeFileSync(DATA_FILE, JSON.stringify(preguntasPorPaciente, null, 2));
+  }
 } catch (e) {
-  console.log("📂 No se encontró preguntas.json, se iniciará vacío");
+  console.error("❌ Error al manejar preguntas.json:", e.message);
   preguntasPorPaciente = {};
 }
 
@@ -32,7 +38,6 @@ app.post("/guardar-preguntas", (req, res) => {
   const uniqueId = req.body.uniqueId || req.body.idPaciente;
   let preguntas = req.body.preguntas;
 
-  // 💉 Parche: convertir string a array si es necesario
   if (typeof preguntas === "string") {
     preguntas = preguntas.split(",").map(p => p.trim());
   }
