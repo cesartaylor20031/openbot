@@ -1,4 +1,4 @@
-const express = require("express");
+  const express = require("express");
 const cors = require("cors");
 const puppeteer = require("puppeteer-core");
 
@@ -14,9 +14,14 @@ app.get("/test", (req, res) => {
   res.json({ mensaje: "Servidor funcionando bien" });
 });
 
-// 🔽 GUARDAR PREGUNTAS
+// 🔽 GUARDAR PREGUNTAS CON LOGS EXPLÍCITOS
 app.post("/guardar-preguntas", (req, res) => {
+  console.log("🧠 POST /guardar-preguntas - Body recibido:", req.body);
+
   const { uniqueId, preguntas } = req.body;
+
+  console.log("🔎 uniqueId:", uniqueId);
+  console.log("🧾 preguntas:", preguntas);
 
   if (!uniqueId || !Array.isArray(preguntas)) {
     return res.status(400).json({
