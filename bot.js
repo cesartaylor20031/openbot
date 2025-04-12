@@ -66,27 +66,36 @@ Estilo de vida: ${estilo_vida}
 
     const outputRaw = response.data.choices[0].message.content;
 
-    // 🔍 Convertimos texto a objeto real de JS
+    // 🔍 Imprimimos el contenido bruto para depuración
+    console.log("🧾 Respuesta cruda de GPT:", outputRaw);
+
+    // 🧪 Intentamos convertir a JSON
     let output;
     try {
       output = JSON.parse(outputRaw);
     } catch (err) {
-      console.error("❌ Error al parsear JSON generado por GPT:", err);
-      return res.status(500).json({ error: 'Respuesta de IA mal formada', raw: outputRaw });
+      console.error("❌ Error al parsear JSON de GPT:", err);
+      return res.status(500).json({
+        error: 'Error al parsear respuesta de GPT',
+        detalle: err.message,
+        raw: outputRaw
+      });
     }
 
-    // 🧠 Obtener el ID único del paciente para guardar preguntas
+    // 🧠 Validar estructura
+    if (!output.preguntas || !Array.isArray(output.preguntas)) {
+      return res.status(500).json({
+        error: 'La IA no devolvió una lista válida de preguntas',
+        raw: outputRaw
+      });
+    }
+
     const uniqueId = req.body.uniqueId || req.body.idPaciente || 'desconocido_' + Date.now();
 
-    // ⚠️ Validar que vengan preguntas antes de guardar
-    if (!output.preguntas || !Array.isArray(output.preguntas)) {
-      return res.status(500).json({ error: 'La IA no devolvió un arreglo de preguntas válido', output });
-    }
-
-    // ✅ Guardar preguntas en memoria
+    // ✅ Guardar preguntas
     preguntasPorPaciente[uniqueId] = output.preguntas;
 
-    // 📦 Confirmar guardado y enviar respuesta al cliente
+    // 📦 Confirmar éxito
     res.status(200).json({
       mensaje: 'Preguntas generadas y guardadas correctamente',
       id: uniqueId,
@@ -94,12 +103,11 @@ Estilo de vida: ${estilo_vida}
     });
 
   } catch (err) {
-    console.error('💥 Error en generación de interrogatorio:', err);
-    res.status(500).json({ error: 'Error generando el interrogatorio clínico (GPT u OpenAI)' });
+    console.error('💥 Error en generación:', err);
+    res.status(500).json({ error: 'Error interno en el servidor', detalle: err.message });
   }
 });
 
-// 🧪 Para pruebas: ver preguntas por ID
 app.get('/preguntas/:id', (req, res) => {
   const id = req.params.id;
   const preguntas = preguntasPorPaciente[id];
@@ -110,5 +118,5 @@ app.get('/preguntas/:id', (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`🔥 OpenBot Interrogatorio escuchando en puerto ${port}`);
+  console.log(`🚀 OpenBot Interrogatorio escuchando en puerto ${port}`);
 });
