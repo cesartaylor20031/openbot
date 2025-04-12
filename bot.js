@@ -14,12 +14,17 @@ app.get("/test", (req, res) => {
   res.json({ mensaje: "Servidor funcionando bien" });
 });
 
-// 🔽 GUARDAR PREGUNTAS CON LOGS EXPLÍCITOS
+// 🔽 GUARDAR PREGUNTAS CON PARCHE DE TIPO
 app.post("/guardar-preguntas", (req, res) => {
   console.log("🧠 POST /guardar-preguntas - Body recibido:", req.body);
 
   const uniqueId = req.body.uniqueId || req.body.idPaciente;
-  const preguntas = req.body.preguntas;
+  let preguntas = req.body.preguntas;
+
+  // 💉 Parche: convertir string a array si es necesario
+  if (typeof preguntas === "string") {
+    preguntas = preguntas.split(",").map(p => p.trim());
+  }
 
   console.log("🔎 uniqueId (o idPaciente):", uniqueId);
   console.log("🧾 preguntas:", preguntas);
