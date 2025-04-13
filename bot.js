@@ -1,4 +1,3 @@
-
 const express = require("express");
 const cors = require("cors");
 const puppeteer = require("puppeteer-core");
@@ -11,7 +10,6 @@ app.use(express.json());
 
 const PREGUNTAS_DIR = path.join(__dirname, "preguntas");
 
-// Crear carpeta si no existe
 if (!fs.existsSync(PREGUNTAS_DIR)) {
   fs.mkdirSync(PREGUNTAS_DIR);
   console.log("📂 Carpeta 'preguntas' creada.");
