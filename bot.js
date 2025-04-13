@@ -6,18 +6,16 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 🧠 Almacenamiento volátil en RAM
-const preguntasPorPaciente = {};
+// 🧠 MAPA EN MEMORIA VOLÁTIL
+const preguntasPorPaciente = {}; // 🔁 RAM temporal
 
-// 🔍 Prueba de vida
+// 🔍 Verificación rápida
 app.get("/test", (req, res) => {
   res.json({ mensaje: "Servidor funcionando bien" });
 });
 
-// 🧠 Guardar preguntas en RAM
+// 🔽 GUARDAR PREGUNTAS EN RAM
 app.post("/guardar-preguntas", (req, res) => {
-  console.log("📩 POST /guardar-preguntas recibido:", req.body);
-
   const uniqueId = req.body.uniqueId || req.body.idPaciente;
   let preguntas = req.body.preguntas;
 
@@ -37,7 +35,7 @@ app.post("/guardar-preguntas", (req, res) => {
   res.json({ mensaje: "Preguntas guardadas correctamente" });
 });
 
-// 🔎 Consultar preguntas por ID
+// 🔽 CONSULTAR PREGUNTAS DESDE RAM
 app.get("/preguntas/:id", (req, res) => {
   const preguntas = preguntasPorPaciente[req.params.id];
   if (!preguntas) {
@@ -46,9 +44,10 @@ app.get("/preguntas/:id", (req, res) => {
   res.json({ preguntas });
 });
 
-// 🧪 Consultar en OpenEvidence con Browserless
+// 🧪 CONSULTA A OPENEVIDENCE (NO TOCAR)
 app.post("/pregunta", async (req, res) => {
   const { pregunta } = req.body;
+
   if (!pregunta) {
     return res.status(400).json({ error: "Falta el campo 'pregunta'" });
   }
@@ -60,11 +59,13 @@ app.post("/pregunta", async (req, res) => {
 
     browser = await puppeteer.connect({ browserWSEndpoint: wsUrl });
     const page = await browser.newPage();
+
     await page.goto("https://openevidence.ai", {
       waitUntil: "networkidle2",
       timeout: 60000,
     });
 
+    await page.waitForSelector("textarea", { timeout: 60000 });
     await page.type("textarea", pregunta);
     await page.keyboard.press("Enter");
 
@@ -75,19 +76,19 @@ app.post("/pregunta", async (req, res) => {
     }, { timeout: 60000 });
 
     const respuesta = await page.$eval(".markdown", el => el.innerText);
-    if (!respuesta) throw new Error("No se pudo extraer la respuesta");
-
     await page.close();
     res.json({ respuesta });
-  } catch (err) {
+
+  } catch (error) {
     if (browser) await browser.close();
-    res.status(500).json({ error: "Fallo al rascar OpenEvidence", detalle: err.message });
+    res.status(500).json({ error: "Error al consultar OpenEvidence", detalle: error.message });
   }
 });
 
-// 📥 Guardar respuestas del formulario 2
+// 📥 GUARDAR RESPUESTAS (NO TOCAR)
 app.post("/guardar-respuestas", (req, res) => {
   const { idPaciente, respuestas } = req.body;
+
   if (!idPaciente || !Array.isArray(respuestas)) {
     return res.status(400).json({
       errorMessage: "Faltan datos",
@@ -97,11 +98,10 @@ app.post("/guardar-respuestas", (req, res) => {
 
   console.log("📥 Respuestas del paciente:", idPaciente);
   console.log(respuestas);
-
-  res.json({ mensaje: "Respuestas guardadas correctamente" });
+  res.json({ mensaje: "Respuestas guardadas correctamente (RAM mode)" });
 });
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
-  console.log(`🚀 OpenBot corriendo en el puerto ${PORT}`);
+  console.log(`🚀 OpenBot corriendo en RAM en el puerto ${PORT}`);
 });
