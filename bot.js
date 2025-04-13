@@ -9,48 +9,64 @@ app.use(cors());
 app.use(express.json());
 
 const PREGUNTAS_DIR = path.join(__dirname, "preguntas");
+if (!fs.existsSync(PREGUNTAS_DIR)) fs.mkdirSync(PREGUNTAS_DIR);
 
-if (!fs.existsSync(PREGUNTAS_DIR)) {
-  fs.mkdirSync(PREGUNTAS_DIR);
-  console.log("📂 Carpeta 'preguntas' creada.");
-}
+// 🔁 RAM temporal
+const cacheRAM = {};
 
 app.get("/test", (req, res) => {
   res.json({ mensaje: "Servidor funcionando bien" });
 });
 
+// Guardar preguntas
 app.post("/guardar-preguntas", (req, res) => {
-  console.log("🧠 POST /guardar-preguntas - Body recibido:", req.body);
-
   const uniqueId = req.body.uniqueId || req.body.idPaciente;
   let preguntas = req.body.preguntas;
+
+  if (!uniqueId || !preguntas) {
+    return res.status(400).json({ error: "Faltan datos" });
+  }
 
   if (typeof preguntas === "string") {
     preguntas = preguntas.split(",").map(p => p.trim());
   }
 
-  if (!uniqueId || !Array.isArray(preguntas)) {
-    return res.status(400).json({
-      errorMessage: "Faltan datos",
-      errorDescription: "Se requiere uniqueId y arreglo de preguntas",
-    });
-  }
+  // RAM
+  cacheRAM[uniqueId] = preguntas;
 
+  // Disco
   const filePath = path.join(PREGUNTAS_DIR, `${uniqueId}.json`);
-  fs.writeFileSync(filePath, JSON.stringify({ preguntas }, null, 2));
-  console.log(`📦 Preguntas guardadas en archivo: ${filePath}`);
+  try {
+    fs.writeFileSync(filePath, JSON.stringify({ preguntas }, null, 2));
+    console.log(`📦 Preguntas guardadas en archivo: ${filePath}`);
+  } catch (err) {
+    console.error("❌ Error guardando archivo:", err.message);
+  }
 
   res.json({ mensaje: "Preguntas guardadas correctamente" });
 });
 
+// Consultar preguntas
 app.get("/preguntas/:id", (req, res) => {
-  const filePath = path.join(PREGUNTAS_DIR, `${req.params.id}.json`);
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ error: "No se encontraron preguntas para este ID" });
+  const id = req.params.id;
+  const filePath = path.join(PREGUNTAS_DIR, `${id}.json`);
+
+  // Intenta leer del disco
+  if (fs.existsSync(filePath)) {
+    try {
+      const preguntas = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+      return res.json(preguntas);
+    } catch (err) {
+      console.error("❌ Error leyendo JSON:", err.message);
+    }
   }
 
-  const preguntas = JSON.parse(fs.readFileSync(filePath, "utf-8"));
-  res.json(preguntas);
+  // Si no, usa RAM
+  if (cacheRAM[id]) {
+    return res.json({ preguntas: cacheRAM[id] });
+  }
+
+  res.status(404).json({ error: "No se encontraron preguntas para este ID" });
 });
 
 app.post("/pregunta", async (req, res) => {
@@ -84,8 +100,7 @@ app.post("/pregunta", async (req, res) => {
       return el && el.innerText.length > 50;
     }, { timeout: 60000 });
 
-    const respuesta = await page.$eval(".markdown", el => el.innerText);
-
+    const respuesta = await page.$eval(".markdown", (el) => el.innerText);
     await page.close();
     res.json({ respuesta });
 
