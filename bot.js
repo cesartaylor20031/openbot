@@ -9,21 +9,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const DATA_FILE = path.join(__dirname, "preguntas.json");
+const PREGUNTAS_DIR = path.join(__dirname, "preguntas");
 
-let preguntasPorPaciente = {};
-try {
-  if (fs.existsSync(DATA_FILE)) {
-    preguntasPorPaciente = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
-    console.log("✅ preguntas.json cargado con éxito");
-  } else {
-    console.log("📂 preguntas.json no existe, creando vacío...");
-    preguntasPorPaciente = {};
-    fs.writeFileSync(DATA_FILE, JSON.stringify(preguntasPorPaciente, null, 2));
-  }
-} catch (e) {
-  console.error("❌ Error al manejar preguntas.json:", e.message);
-  preguntasPorPaciente = {};
+// Crear carpeta si no existe
+if (!fs.existsSync(PREGUNTAS_DIR)) {
+  fs.mkdirSync(PREGUNTAS_DIR);
+  console.log("📂 Carpeta 'preguntas' creada.");
 }
 
 // 🔍 Verificación rápida
@@ -31,7 +22,7 @@ app.get("/test", (req, res) => {
   res.json({ mensaje: "Servidor funcionando bien" });
 });
 
-// 🔽 GUARDAR PREGUNTAS CON PARCHE DE TIPO
+// 🔽 GUARDAR PREGUNTAS COMO ARCHIVOS INDIVIDUALES
 app.post("/guardar-preguntas", (req, res) => {
   console.log("🧠 POST /guardar-preguntas - Body recibido:", req.body);
 
@@ -52,28 +43,22 @@ app.post("/guardar-preguntas", (req, res) => {
     });
   }
 
-  preguntasPorPaciente[uniqueId] = preguntas;
-
-  try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(preguntasPorPaciente, null, 2));
-    console.log(`📦 Preguntas guardadas y persistidas para ID: ${uniqueId}`);
-  } catch (e) {
-    console.error("❌ Error al guardar preguntas.json:", e.message);
-  }
+  const filePath = path.join(PREGUNTAS_DIR, `${uniqueId}.json`);
+  fs.writeFileSync(filePath, JSON.stringify({ preguntas }, null, 2));
+  console.log(`📦 Preguntas guardadas en archivo: ${filePath}`);
 
   res.json({ mensaje: "Preguntas guardadas correctamente" });
 });
 
-// 🔽 CONSULTAR PREGUNTAS
+// 🔽 CONSULTAR PREGUNTAS POR ID
 app.get("/preguntas/:id", (req, res) => {
-  const id = req.params.id;
-  const preguntas = preguntasPorPaciente[id];
-
-  if (!preguntas) {
+  const filePath = path.join(PREGUNTAS_DIR, `${req.params.id}.json`);
+  if (!fs.existsSync(filePath)) {
     return res.status(404).json({ error: "No se encontraron preguntas para este ID" });
   }
 
-  res.json({ preguntas });
+  const preguntas = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+  res.json(preguntas);
 });
 
 // 🧪 CONSULTA EN OPENEVIDENCE VIA BROWSERLESS
