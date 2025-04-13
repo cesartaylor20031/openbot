@@ -10,6 +10,7 @@ app.use(express.json());
 
 const PREGUNTAS_DIR = path.join(__dirname, "preguntas");
 
+// ✅ Crear carpeta si no existe
 if (!fs.existsSync(PREGUNTAS_DIR)) {
   fs.mkdirSync(PREGUNTAS_DIR);
   console.log("📂 Carpeta 'preguntas' creada.");
@@ -42,7 +43,7 @@ app.post("/guardar-preguntas", (req, res) => {
   }
 
   const filePath = path.join(PREGUNTAS_DIR, `${uniqueId}.json`);
-  fs.writeFileSync(filePath, JSON.stringify({ preguntas }, null, 2));
+  fs.writeFileSync(filePath, JSON.stringify({ preguntas }, null, 2), "utf-8");
   console.log(`📦 Preguntas guardadas en archivo: ${filePath}`);
 
   res.json({ mensaje: "Preguntas guardadas correctamente" });
@@ -51,12 +52,20 @@ app.post("/guardar-preguntas", (req, res) => {
 // 🔽 CONSULTAR PREGUNTAS POR ID
 app.get("/preguntas/:id", (req, res) => {
   const filePath = path.join(PREGUNTAS_DIR, `${req.params.id}.json`);
+  console.log("🔍 Buscando archivo:", filePath);
+
   if (!fs.existsSync(filePath)) {
     return res.status(404).json({ error: "No se encontraron preguntas para este ID" });
   }
 
-  const preguntas = JSON.parse(fs.readFileSync(filePath, "utf-8"));
-  res.json(preguntas);
+  try {
+    const data = fs.readFileSync(filePath, "utf-8");
+    const preguntas = JSON.parse(data);
+    res.json(preguntas);
+  } catch (err) {
+    console.error("❌ Error al leer archivo de preguntas:", err.message);
+    res.status(500).json({ error: "Error al leer preguntas" });
+  }
 });
 
 // 🧪 CONSULTA EN OPENEVIDENCE VIA BROWSERLESS
