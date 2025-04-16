@@ -1,18 +1,19 @@
 {
-  "name": "openbot",
+  "name": "openbot-vision",
   "version": "1.0.0",
+  "description": "Bot scraping DeepSeek Vision sin API",
   "main": "bot.js",
-  "engines": {
-    "node": "18.x"
-  },
+  "type": "module",
   "scripts": {
     "start": "node bot.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
-    "dotenv": "^16.5.0",
+    "dotenv": "^16.0.3",
     "express": "^4.18.2",
-    "openai": "^4.95.0",
-    "puppeteer-core": "^24.6.1"
+    "puppeteer-core": "^21.3.8"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
