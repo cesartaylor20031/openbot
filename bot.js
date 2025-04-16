@@ -1,7 +1,7 @@
  const express = require("express");
 const cors = require("cors");
 const puppeteer = require("puppeteer-core");
-const { Configuration, OpenAIApi } = require("openai");
+const { Configuration, OpenAIApi } = require("openai"); // 🧠 PATCH REAL
 
 const app = express();
 app.use(cors());
@@ -102,10 +102,11 @@ app.post("/guardar-respuestas", (req, res) => {
   res.json({ mensaje: "Respuestas guardadas correctamente (RAM mode)" });
 });
 
-// 🧠 NUEVO ENDPOINT PARA ANÁLISIS CLÍNICO CON OPENAI
+// 🧠 GPT ANÁLISIS CLÍNICO DE TEXTO
 const configuration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
 const openai = new OpenAIApi(configuration);
 
 app.post("/analizar", async (req, res) => {
@@ -126,9 +127,10 @@ app.post("/analizar", async (req, res) => {
       ],
     });
 
-    res.json({ resultado: respuesta.data.choices[0].message.content });
+    res.json({ respuesta: respuesta.data.choices[0].message.content });
   } catch (error) {
-    res.status(500).json({ error: "Error al consultar OpenAI", detalle: error.message });
+    console.error("❌ Error al analizar con GPT:", error.message);
+    res.status(500).json({ error: "Error al procesar el análisis clínico", detalle: error.message });
   }
 });
 
