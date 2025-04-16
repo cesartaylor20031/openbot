@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
-const { Configuration, OpenAIApi } = require("openai");
+const OpenAI = require("openai");
+require("dotenv").config();
 
 const app = express();
 app.use(cors());
@@ -60,12 +61,12 @@ app.post("/guardar-respuestas", (req, res) => {
   res.json({ mensaje: "Respuestas guardadas correctamente (RAM mode)" });
 });
 
-// 💉 NUEVO ENDPOINT PARA ANALIZAR TEXTO CLÍNICO
-const configuration = new Configuration({
-  apiKey: process.env.OPENAI_API_KEY,
+// ✅ CONFIGURACIÓN CORRECTA DE OPENAI (sin Configuration)
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
 });
-const openai = new OpenAIApi(configuration);
 
+// 💉 NUEVO ENDPOINT PARA ANALIZAR TEXTO CLÍNICO
 app.post("/analizar", async (req, res) => {
   const { prompt } = req.body;
 
@@ -74,7 +75,7 @@ app.post("/analizar", async (req, res) => {
   }
 
   try {
-    const respuesta = await openai.createChatCompletion({
+    const respuesta = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
         {
@@ -84,11 +85,41 @@ app.post("/analizar", async (req, res) => {
       ],
     });
 
-    const resultado = respuesta.data.choices[0].message.content;
+    const resultado = respuesta.choices[0].message.content;
     res.json({ resultado });
   } catch (error) {
     console.error("❌ Error al llamar a OpenAI:", error.message);
     res.status(500).json({ error: "Error interno al analizar el texto clínico" });
+  }
+});
+
+// 🔬 ENDPOINT OPCIONAL PARA ANALIZAR IMAGEN POR URL (si se activa visión)
+app.post("/analizar-imagen", async (req, res) => {
+  const { imageUrl, instruccion } = req.body;
+
+  if (!imageUrl) {
+    return res.status(400).json({ error: "Falta la URL de la imagen" });
+  }
+
+  try {
+    const respuesta = await openai.chat.completions.create({
+      model: "gpt-4-vision-preview", // cambiar a deepseek si no tienes acceso
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: instruccion || "Analiza esta imagen médica como radiólogo experto." },
+            { type: "image_url", image_url: { url: imageUrl } }
+          ]
+        }
+      ]
+    });
+
+    const resultado = respuesta.choices[0].message.content;
+    res.json({ resultado });
+  } catch (error) {
+    console.error("❌ Error al analizar imagen:", error.message);
+    res.status(500).json({ error: "Error al analizar imagen desde la URL" });
   }
 });
 
