@@ -1,7 +1,6 @@
- const express = require("express");
+const express = require("express");
 const cors = require("cors");
-const puppeteer = require("puppeteer-core");
-const { Configuration, OpenAIApi } = require("openai"); // 🧠 PATCH REAL
+const { Configuration, OpenAIApi } = require("openai");
 
 const app = express();
 app.use(cors());
@@ -45,47 +44,6 @@ app.get("/preguntas/:id", (req, res) => {
   res.json({ preguntas });
 });
 
-// 🧪 CONSULTA A OPENEVIDENCE (NO TOCAR)
-app.post("/pregunta", async (req, res) => {
-  const { pregunta } = req.body;
-
-  if (!pregunta) {
-    return res.status(400).json({ error: "Falta el campo 'pregunta'" });
-  }
-
-  let browser;
-  try {
-    const BROWSERLESS_TOKEN = process.env.BROWSERLESS_TOKEN || "S6lhR1nl9d2KZU5350378ac84676c05d9beb9cfda8";
-    const wsUrl = `wss://chrome.browserless.io?token=${BROWSERLESS_TOKEN}`;
-
-    browser = await puppeteer.connect({ browserWSEndpoint: wsUrl });
-    const page = await browser.newPage();
-
-    await page.goto("https://openevidence.ai", {
-      waitUntil: "networkidle2",
-      timeout: 60000,
-    });
-
-    await page.waitForSelector("textarea", { timeout: 60000 });
-    await page.type("textarea", pregunta);
-    await page.keyboard.press("Enter");
-
-    await page.waitForSelector(".markdown", { timeout: 60000 });
-    await page.waitForFunction(() => {
-      const el = document.querySelector(".markdown");
-      return el && el.innerText.length > 50;
-    }, { timeout: 60000 });
-
-    const respuesta = await page.$eval(".markdown", el => el.innerText);
-    await page.close();
-    res.json({ respuesta });
-
-  } catch (error) {
-    if (browser) await browser.close();
-    res.status(500).json({ error: "Error al consultar OpenEvidence", detalle: error.message });
-  }
-});
-
 // 📥 GUARDAR RESPUESTAS (NO TOCAR)
 app.post("/guardar-respuestas", (req, res) => {
   const { idPaciente, respuestas } = req.body;
@@ -102,11 +60,10 @@ app.post("/guardar-respuestas", (req, res) => {
   res.json({ mensaje: "Respuestas guardadas correctamente (RAM mode)" });
 });
 
-// 🧠 GPT ANÁLISIS CLÍNICO DE TEXTO
+// 💉 NUEVO ENDPOINT PARA ANALIZAR TEXTO CLÍNICO
 const configuration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY,
 });
-
 const openai = new OpenAIApi(configuration);
 
 app.post("/analizar", async (req, res) => {
@@ -127,10 +84,11 @@ app.post("/analizar", async (req, res) => {
       ],
     });
 
-    res.json({ respuesta: respuesta.data.choices[0].message.content });
+    const resultado = respuesta.data.choices[0].message.content;
+    res.json({ resultado });
   } catch (error) {
-    console.error("❌ Error al analizar con GPT:", error.message);
-    res.status(500).json({ error: "Error al procesar el análisis clínico", detalle: error.message });
+    console.error("❌ Error al llamar a OpenAI:", error.message);
+    res.status(500).json({ error: "Error interno al analizar el texto clínico" });
   }
 });
 
