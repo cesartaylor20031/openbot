@@ -1,6 +1,7 @@
-const express = require("express");
+ const express = require("express");
 const cors = require("cors");
 const puppeteer = require("puppeteer-core");
+const { Configuration, OpenAIApi } = require("openai");
 
 const app = express();
 app.use(cors());
@@ -99,6 +100,36 @@ app.post("/guardar-respuestas", (req, res) => {
   console.log("📥 Respuestas del paciente:", idPaciente);
   console.log(respuestas);
   res.json({ mensaje: "Respuestas guardadas correctamente (RAM mode)" });
+});
+
+// 🧠 NUEVO ENDPOINT PARA ANÁLISIS CLÍNICO CON OPENAI
+const configuration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+const openai = new OpenAIApi(configuration);
+
+app.post("/analizar", async (req, res) => {
+  const { prompt } = req.body;
+
+  if (!prompt) {
+    return res.status(400).json({ error: "Falta el campo 'prompt'" });
+  }
+
+  try {
+    const respuesta = await openai.createChatCompletion({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "user",
+          content: `Analiza este texto clínico, identifica parámetros alterados y sus posibles causas:\n\n${prompt}`,
+        },
+      ],
+    });
+
+    res.json({ resultado: respuesta.data.choices[0].message.content });
+  } catch (error) {
+    res.status(500).json({ error: "Error al consultar OpenAI", detalle: error.message });
+  }
 });
 
 const PORT = process.env.PORT || 4000;
