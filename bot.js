@@ -1,58 +1,38 @@
+
 const express = require("express");
 const cors = require("cors");
-const puppeteer = require("puppeteer-core");
+const fs = require("fs");
+const crypto = require("crypto");
+const forge = require("node-forge");
 require("dotenv").config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 🚀 TEST
-app.get("/test", (req, res) => {
-  res.json({ mensaje: "Bot listo para DeepSeek Vision sin API" });
-});
-
-// 🧠 RUTA PRINCIPAL: SCRAPING DeepSeek
-app.post("/vision-deepseek", async (req, res) => {
-  const { image_url } = req.body;
-
-  if (!image_url) {
-    return res.status(400).json({ error: "Falta image_url" });
-  }
-
-  const browserWSEndpoint = `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_TOKEN}`;
+// Ruta para firmar texto
+app.post("/firmar", async (req, res) => {
+  const { texto } = req.body;
+  if (!texto) return res.status(400).json({ error: "Falta el campo 'texto'" });
 
   try {
-    const browser = await puppeteer.connect({ browserWSEndpoint });
-    const page = await browser.newPage();
+    const clavePrivada = fs.readFileSync("./fiel/clave.key", "binary");
+    const cert = fs.readFileSync("./fiel/cert.cer", "binary");
 
-    await page.goto("https://deepseek.com/vision", { waitUntil: "domcontentloaded" });
+    const password = process.env.FIEL_PASS;
+    const privateKey = forge.pki.decryptRsaPrivateKey(clavePrivada, password);
+    if (!privateKey) return res.status(403).json({ error: "Clave privada inválida" });
 
-    // Esperar carga y llenar los campos
-    await page.waitForSelector("textarea");
-    await page.type("textarea", "Describe esta imagen médica como un radiólogo experto.");
+    const md = forge.md.sha256.create();
+    md.update(texto, "utf8");
+    const firma = forge.util.encode64(privateKey.sign(md));
 
-    const input = await page.$('input[type="text"]');
-    await input.click({ clickCount: 3 });
-    await input.type(image_url);
-
-    const button = await page.$("button");
-    await button.click();
-
-    // Esperar respuesta del modelo
-    await page.waitForSelector(".prose", { timeout: 30000 });
-    const resultado = await page.$eval(".prose", el => el.innerText);
-
-    await browser.close();
-
-    res.json({ resultado });
-  } catch (error) {
-    console.error("❌ Error durante el scraping:", error.message);
-    res.status(500).json({ error: "No se pudo obtener análisis desde DeepSeek" });
+    res.json({ firma });
+  } catch (err) {
+    console.error("Error al firmar:", err.message);
+    res.status(500).json({ error: "Error al firmar el texto" });
   }
 });
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`🧠 OpenBot scrapeando DeepSeek en puerto ${PORT}`);
-});
+app.listen(PORT, () => console.log("✅ Bot firmador escuchando en puerto", PORT));
