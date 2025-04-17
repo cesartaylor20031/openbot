@@ -12,17 +12,19 @@ app.post("/firmar", async (req, res) => {
   if (!texto) return res.status(400).json({ error: "Falta el campo 'texto'" });
 
   try {
-    const password = process.env.FIEL_PASS;
+    // Leer desde las variables de entorno en base64
     const keyBase64 = process.env.FIEL_KEY_BASE64;
     const cerBase64 = process.env.FIEL_CER_BASE64;
+    const password = process.env.FIEL_PASS;
 
-    if (!keyBase64 || !cerBase64) {
-      return res.status(500).json({ error: "Faltan datos de la FIEL en el entorno" });
+    if (!keyBase64 || !cerBase64 || !password) {
+      return res.status(500).json({ error: "Variables de entorno faltantes" });
     }
 
-    const keyPem = forge.util.decode64(keyBase64);
-    const privateKey = forge.pki.decryptRsaPrivateKey(keyPem, password);
+    // Decodificar base64
+    const keyPem = Buffer.from(keyBase64, "base64").toString("utf8");
 
+    const privateKey = forge.pki.decryptRsaPrivateKey(keyPem, password);
     if (!privateKey) return res.status(403).json({ error: "Clave privada inválida" });
 
     const md = forge.md.sha256.create();
@@ -37,6 +39,4 @@ app.post("/firmar", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log("✅ Bot firmador escuchando en puerto", PORT);
-});
+app.listen(PORT, () => console.log("✅ Bot firmador escuchando en puerto", PORT));
