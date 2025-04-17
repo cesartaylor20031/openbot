@@ -7,18 +7,22 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 🔐 RUTA PARA FIRMAR TEXTO CON LA FIEL
 app.post("/firmar", async (req, res) => {
   const { texto } = req.body;
   if (!texto) return res.status(400).json({ error: "Falta el campo 'texto'" });
 
   try {
-    // 🔓 Decodifica los archivos en base64 desde variables de entorno
-    const clavePrivadaBase64 = process.env.FIEL_KEY_BASE64;
     const password = process.env.FIEL_PASS;
+    const keyBase64 = process.env.FIEL_KEY_BASE64;
+    const cerBase64 = process.env.FIEL_CER_BASE64;
 
-    const clavePrivadaPem = Buffer.from(clavePrivadaBase64, "base64").toString("utf8");
-    const privateKey = forge.pki.decryptRsaPrivateKey(clavePrivadaPem, password);
+    if (!keyBase64 || !cerBase64) {
+      return res.status(500).json({ error: "Faltan datos de la FIEL en el entorno" });
+    }
+
+    const keyPem = forge.util.decode64(keyBase64);
+    const privateKey = forge.pki.decryptRsaPrivateKey(keyPem, password);
+
     if (!privateKey) return res.status(403).json({ error: "Clave privada inválida" });
 
     const md = forge.md.sha256.create();
@@ -27,12 +31,11 @@ app.post("/firmar", async (req, res) => {
 
     res.json({ firma });
   } catch (err) {
-    console.error("❌ Error al firmar:", err.message);
+    console.error("Error al firmar:", err.message);
     res.status(500).json({ error: "Error al firmar el texto" });
   }
 });
 
-// 🚀 SERVER ON
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log("✅ Bot firmador escuchando en puerto", PORT);
