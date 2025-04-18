@@ -13,7 +13,8 @@ app.post("/firmar", async (req, res) => {
   if (!texto) return res.status(400).json({ error: "Falta el campo 'texto'" });
 
   try {
-    const clavePem = fs.readFileSync("C:/FIEL/clave.key.pem", "utf8");
+    // CAMBIO CLAVE AQUÍ ⬇️
+    const clavePem = fs.readFileSync("/fiel/clave.key.pem", "utf8");
 
     const privateKey = forge.pki.privateKeyFromPem(clavePem);
     const md = forge.md.sha256.create();
